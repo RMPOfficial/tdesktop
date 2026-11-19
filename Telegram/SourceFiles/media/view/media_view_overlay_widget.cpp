@@ -5656,6 +5656,8 @@ void OverlayWidget::restartAtProgress(float64 progress) {
 void OverlayWidget::restartAtSeekPosition(crl::time position) {
 	Expects(_streamed != nullptr);
 
+	// videoStart already reports the position of a new document
+	const auto reportSeek = _smtcSink && (_smtcDocument == _document);
 	if (videoShown()) {
 		_streamed->instance.saveFrameToCover();
 		const auto saved = base::take(_rotation);
@@ -5702,6 +5704,9 @@ void OverlayWidget::restartAtSeekPosition(crl::time position) {
 	_streamed->pausedBySeek = false;
 
 	updatePlaybackState();
+	if (reportSeek) {
+		_smtcSink->videoSeeked();
+	}
 }
 
 void OverlayWidget::playbackControlsSeekProgress(crl::time position) {
