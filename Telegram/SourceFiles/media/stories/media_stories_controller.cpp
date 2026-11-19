@@ -1141,6 +1141,10 @@ float64 Controller::currentVolume() const {
 	return Core::App().settings().videoVolume();
 }
 
+rpl::producer<float64> Controller::volumeChanges() const {
+	return Core::App().settings().videoVolumeChanges();
+}
+
 void Controller::toggleVolume() {
 	_delegate->storiesVolumeToggle();
 }
