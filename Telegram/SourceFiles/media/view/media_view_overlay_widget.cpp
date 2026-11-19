@@ -5655,6 +5655,8 @@ void OverlayWidget::restartAtProgress(float64 progress) {
 void OverlayWidget::restartAtSeekPosition(crl::time position) {
 	Expects(_streamed != nullptr);
 
+	// videoStart already reports the position of a new document
+	const auto reportSeek = _smtcSink && (_smtcDocument == _document);
 	if (videoShown()) {
 		_streamed->instance.saveFrameToCover();
 		const auto saved = base::take(_rotation);
@@ -5701,6 +5703,9 @@ void OverlayWidget::restartAtSeekPosition(crl::time position) {
 	_streamed->pausedBySeek = false;
 
 	updatePlaybackState();
+	if (reportSeek) {
+		_smtcSink->videoSeeked();
+	}
 }
 
 void OverlayWidget::playbackControlsSeekProgress(crl::time position) {
@@ -6184,9 +6189,14 @@ void OverlayWidget::refreshSystemMediaControls() {
 		.artist = channel ? filename : _fromName,
 		.position = std::max(state.position, int64(0)),
 		.duration = std::max(state.length, int64(0)),
+		.speed = _streamed->instance.speed(),
 		.playing = (!player.paused() && !player.finished()),
 		.nextAvailable = _rightNavVisible,
 		.previousAvailable = _leftNavVisible,
+		.seekable = !_stories,
+		.speedControllable = (_streamed->controls != nullptr)
+			&& !_stories
+			&& Media::Audio::SupportsSpeedControl(),
 	};
 	if (_smtcDocument != _document) {
 		_smtcDocument = _document;
@@ -6280,6 +6290,22 @@ void OverlayWidget::smtcSeek(crl::time position) {
 	_streamingStartPaused = _streamed->instance.player().paused();
 	restartAtSeekPosition(position);
 	activateControls();
+}
+
+void OverlayWidget::smtcSetVolume(float64 volume) {
+	if (_streamed && _streamed->controls) {
+		_streamed->controls->updatePlaybackVolume(volume);
+	} else {
+		playbackControlsVolumeChanged(volume);
+	}
+	playbackControlsVolumeChangeFinished();
+}
+
+void OverlayWidget::smtcSetSpeed(float64 speed) {
+	if (_streamed && _streamed->controls && !_stories && !_speedBoostActive) {
+		_streamed->controls->updatePlaybackSpeed(speed);
+		updatePlaybackState();
+	}
 }
 
 void OverlayWidget::validatePhotoImage(Image *image, bool blurred) {
